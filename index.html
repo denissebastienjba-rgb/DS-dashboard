@@ -2,35 +2,1564 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Firebase Test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double Structure Strategy — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
 <style>
-  body { background: #0a0c0f; color: #e2e8f0; font-family: monospace; padding: 40px; }
-  .box { background: #111318; border: 1px solid #1e2330; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
-  .log { font-size: 0.85rem; line-height: 1.8; }
-  .ok  { color: #00e5a0; }
-  .err { color: #ff4d6a; }
-  .info{ color: #ffcc00; }
-  button { background: #00e5a0; color: #0a0c0f; border: none; padding: 10px 20px;
-           border-radius: 6px; font-family: monospace; font-weight: 700; cursor: pointer; margin-right: 8px; }
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111318;
+    --surface2: #181c23;
+    --border: #1e2330;
+    --accent: #00e5a0;
+    --accent2: #ff6b35;
+    --accent3: #5b8fff;
+    --warn: #ffcc00;
+    --text: #e2e8f0;
+    --muted: #5a6478;
+    --danger: #ff4d6a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .header-left p {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 9px 14px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.2);
+  }
+
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+
+  .card-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+
+  /* Stat cards */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.green::after { background: var(--accent); }
+  .stat-card.orange::after { background: var(--accent2); }
+  .stat-card.blue::after { background: var(--accent3); }
+  .stat-card.yellow::after { background: var(--warn); }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: 'Space Mono', monospace;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-value.green { color: var(--accent); }
+  .stat-value.orange { color: var(--accent2); }
+  .stat-value.blue { color: var(--accent3); }
+  .stat-value.yellow { color: var(--warn); }
+
+  .stat-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* Checklist */
+  .checklist { display: flex; flex-direction: column; gap: 10px; }
+
+  .check-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+
+  .check-item:hover { border-color: var(--accent); }
+  .check-item.checked { border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.04); }
+
+  .check-box {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 4px;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    margin-top: 1px;
+  }
+
+  .check-item.checked .check-box {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-item.checked .check-box::after {
+    content: '✓';
+    font-size: 0.65rem;
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .check-text { font-size: 0.85rem; line-height: 1.4; }
+  .check-item.checked .check-text { color: var(--muted); text-decoration: line-through; }
+  .check-tag {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'Space Mono', monospace;
+    margin-left: auto;
+    min-width: fit-content;
+    align-self: center;
+  }
+
+  .tag-green { background: rgba(0,229,160,0.1); color: var(--accent); }
+  .tag-orange { background: rgba(255,107,53,0.1); color: var(--accent2); }
+  .tag-blue { background: rgba(91,143,255,0.1); color: var(--accent3); }
+  .tag-yellow { background: rgba(255,204,0,0.1); color: var(--warn); }
+  .tag-red { background: rgba(255,77,106,0.1); color: var(--danger); }
+
+  /* Progress bar */
+  .progress-wrap { margin-bottom: 20px; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .progress-label span:last-child { color: var(--accent); }
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00b37d);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  /* Rules table */
+  .rules-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+  .rules-table th {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .rules-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,35,48,0.6);
+    vertical-align: top;
+  }
+  .rules-table tr:last-child td { border-bottom: none; }
+  .rules-table tr:hover td { background: rgba(0,229,160,0.02); }
+
+  /* Risk calculator */
+  .calc-form { display: flex; flex-direction: column; gap: 14px; }
+
+  .form-group label {
+    display: block;
+    font-size: 0.72rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+  }
+
+  .form-group select option { background: var(--surface2); }
+
+  .calc-result {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 4px;
+  }
+
+  .calc-result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .calc-result-item label {
+    font-size: 0.65rem;
+    font-family: 'Space Mono', monospace;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .calc-result-item .val {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .verdict {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
+  .verdict.pass { background: rgba(0,229,160,0.1); color: var(--accent); border: 1px solid rgba(0,229,160,0.3); }
+  .verdict.fail { background: rgba(255,77,106,0.1); color: var(--danger); border: 1px solid rgba(255,77,106,0.3); }
+
+  /* Structure anatomy */
+  .anatomy-visual {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .anatomy-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .anatomy-row:last-child { border-bottom: none; }
+
+  .anatomy-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--accent);
+    min-width: 28px;
+  }
+
+  .anatomy-label { font-size: 0.85rem; flex: 1; }
+  .anatomy-detail { font-size: 0.75rem; color: var(--muted); }
+
+  /* Weekly schedule */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+
+  @media (max-width: 700px) {
+    .week-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .day-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+
+  .day-card.active-day { border-color: rgba(0,229,160,0.3); }
+  .day-card.excluded { border-color: rgba(255,77,106,0.2); opacity: 0.6; }
+
+  .day-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .day-task {
+    font-size: 0.72rem;
+    line-height: 1.4;
+    color: var(--text);
+  }
+
+  .day-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 6px 0;
+  }
+
+  /* Info pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-family: 'Space Mono', monospace;
+    border: 1px solid;
+  }
+
+  .pill-green { color: var(--accent); border-color: rgba(0,229,160,0.25); background: rgba(0,229,160,0.07); }
+  .pill-red { color: var(--danger); border-color: rgba(255,77,106,0.25); background: rgba(255,77,106,0.07); }
+  .pill-orange { color: var(--accent2); border-color: rgba(255,107,53,0.25); background: rgba(255,107,53,0.07); }
+
+  /* Section divider */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 24px 0 16px;
+  }
+
+  .section-divider span {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .section-divider::before, .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Reset btn */
+  .btn {
+    padding: 10px 18px;
+    border-radius: 6px;
+    border: 1px solid;
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover { opacity: 0.85; }
+
+  .btn-ghost {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--muted);
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Fade in animation */
+  .tab-content.active {
+    animation: fadeIn 0.25s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .mb-16 { margin-bottom: 16px; }
+  .mt-16 { margin-top: 16px; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
 </style>
 </head>
 <body>
 
-<div class="box">
-  <div style="font-size:1.1rem;font-weight:700;margin-bottom:16px;">🔥 Firebase Connection Test</div>
-  <button onclick="runTest()">Run Test</button>
-  <button onclick="testWrite()">Test Write</button>
-  <button onclick="testRead()">Test Read</button>
-</div>
+<div class="container">
 
-<div class="box">
-  <div class="log" id="log">Waiting — click Run Test to begin...<br></div>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <h1>▲ Double Structure Strategy</h1>
+      <p>Mean-Reversion · Forex Only · M30–H4 · Mechanical</p>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot"></div>
+      STRATEGY ACTIVE
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview', this)">Overview</button>
+    <button class="tab" onclick="switchTab('anatomy', this)">Structure Anatomy</button>
+    <button class="tab" onclick="switchTab('checklist', this)">Trade Checklist</button>
+    <button class="tab" onclick="switchTab('calculator', this)">Risk Calculator</button>
+    <button class="tab" onclick="switchTab('routine', this)">Weekly Routine</button>
+    <button class="tab" onclick="switchTab('pairs', this)">Forex Pairs</button>
+    <button class="tab" onclick="switchTab('tracker', this)">TA Tracker</button>
+  </div>
+
+  <!-- ===== OVERVIEW TAB ===== -->
+  <div id="tab-overview" class="tab-content active">
+
+    <div class="grid-4 mb-16">
+      <div class="stat-card green">
+        <div class="stat-label">Min RR</div>
+        <div class="stat-value green">1:2.5</div>
+        <div class="stat-sub">Abort if below this</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Risk / Trade</div>
+        <div class="stat-value orange">1%</div>
+        <div class="stat-sub">Max 2% if low frequency</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">Active Hours</div>
+        <div class="stat-value blue">02–15</div>
+        <div class="stat-sub">Eastern Time (EST) · 03–16 EDT</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">Banned Month</div>
+        <div class="stat-value yellow">MAR</div>
+        <div class="stat-sub">Trader vacation month</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-title">📋 Core Rules</div>
+        <div class="checklist" style="gap:8px;">
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">Major & Minor Forex pairs only — no exotics</div>
+            <span class="check-tag tag-red">HARD</span>
+          </div>
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">M30 to H4 timeframes — single timeframe only, no MTF</div>
+            <span class="check-tag tag-red">HARD</span>
+          </div>
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">EMA 100 filter — price must be above (buy) or below (sell)</div>
+            <span class="check-tag tag-red">HARD</span>
+          </div>
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">No partial closes — take full TP or full SL</div>
+            <span class="check-tag tag-red">HARD</span>
+          </div>
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">Do not trade in March — all months negative backtest</div>
+            <span class="check-tag tag-red">HARD</span>
+          </div>
+          <div class="check-item" style="cursor:default;">
+            <div class="check-box" style="border-color:var(--accent);background:var(--accent)"><span style="font-size:.6rem;color:var(--bg);font-weight:700;">✓</span></div>
+            <div class="check-text">Macro trend is irrelevant — pure reversal, ignore HTF direction</div>
+            <span class="check-tag tag-orange">KEY</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Backtest Stats</div>
+
+        <div class="section-divider"><span>Structure Type</span></div>
+        <table class="rules-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Description</th>
+              <th>% of Profits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="pill pill-green">Detached</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">S2 breaks out of S1 trendline independently</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-weight:700;">52.17%</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-orange">2-in-1</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">S2 stays bounded inside S1 trendline</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-weight:700;">47.83%</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="section-divider"><span>Entry Method</span></div>
+        <table class="rules-table">
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Description</th>
+              <th>% of Profits</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="pill pill-green">Breakout Close</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Enter on close of breakout candle</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-weight:700;">58.76%</span></td>
+            </tr>
+            <tr>
+              <td><span class="pill pill-orange">Pullback</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Wait for retest of zone after breakout</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-weight:700;">41.25%</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="section-divider"><span>Macro Trend Impact (irrelevant)</span></div>
+        <table class="rules-table">
+          <thead><tr><th>Macro Trend</th><th>Win Rate</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--muted)">Neutral</td><td style="color:var(--text);font-family:'Space Mono',monospace;">31.25%</td></tr>
+            <tr><td style="color:var(--muted)">Bearish</td><td style="color:var(--text);font-family:'Space Mono',monospace;">36.08%</td></tr>
+            <tr><td style="color:var(--muted)">Bullish</td><td style="color:var(--text);font-family:'Space Mono',monospace;">31.86%</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <div class="section-divider"><span>Risk Limits</span></div>
+    <div class="grid-4">
+      <div class="card" style="text-align:center;">
+        <div class="stat-label" style="margin-bottom:6px;">Per Trade</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.2rem;color:var(--accent);">1%</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">2% if low frequency</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="stat-label" style="margin-bottom:6px;">Daily Max</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.2rem;color:var(--accent2);">2%</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Stop trading if hit</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="stat-label" style="margin-bottom:6px;">Weekly Max</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.2rem;color:var(--accent3);">4%</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Stop trading if hit</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="stat-label" style="margin-bottom:6px;">Monthly Max</div>
+        <div style="font-family:'Space Mono',monospace;font-size:1.2rem;color:var(--warn);">12%</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">10% on prop firms</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ANATOMY TAB ===== -->
+  <div id="tab-anatomy" class="tab-content">
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏗️ Structure 1 — The Trend</div>
+        <div class="anatomy-visual">
+          <div class="anatomy-row">
+            <div class="anatomy-num">S1</div>
+            <div>
+              <div class="anatomy-label">Clear Dow Theory Trend</div>
+              <div class="anatomy-detail">Must be well-defined and drawable</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num" style="color:var(--danger);">↓</div>
+            <div>
+              <div class="anatomy-label">Bearish: Lower Highs (LH) + Lower Lows (LL)</div>
+              <div class="anatomy-detail">Connect LH points with trendline</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num" style="color:var(--accent);">↑</div>
+            <div>
+              <div class="anatomy-label">Bullish: Higher Highs (HH) + Higher Lows (HL)</div>
+              <div class="anatomy-detail">Connect HL points with trendline</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num">TP</div>
+            <div>
+              <div class="anatomy-label">Take Profit = Origin of Structure 1</div>
+              <div class="anatomy-detail">The absolute peak/trough where trend started — treat as zone</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);">
+          📌 TP is always at the <strong style="color:var(--text);">origin/start of S1</strong>. No partial closes allowed.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔄 Structure 2 — The Consolidation</div>
+        <div class="anatomy-visual">
+          <div class="anatomy-row">
+            <div class="anatomy-num">S2</div>
+            <div>
+              <div class="anatomy-label">Exhaustion / Consolidation Phase</div>
+              <div class="anatomy-detail">Range, Double Top/Bottom, or Head & Shoulders</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num" style="color:var(--accent);">D</div>
+            <div>
+              <div class="anatomy-label">Detached Structure (52.17%)</div>
+              <div class="anatomy-detail">S2 breaks and evolves outside S1 trendline — PRIORITY</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num" style="color:var(--accent3);">2-1</div>
+            <div>
+              <div class="anatomy-label">2-in-1 Structure (47.83%)</div>
+              <div class="anatomy-detail">S2 stays bounded inside S1 trendline</div>
+            </div>
+          </div>
+          <div class="anatomy-row">
+            <div class="anatomy-num">PZ</div>
+            <div>
+              <div class="anatomy-label">Psychological Zone</div>
+              <div class="anatomy-detail">Horizontal support/resistance boundary of S2</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--muted);padding:10px 14px;background:var(--surface2);border-radius:6px;border:1px solid var(--border);">
+          📌 Entry triggers only after a candle <strong style="color:var(--text);">closes cleanly</strong> outside the Psychological Zone.
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"><span>Entry & Stop Loss Placement</span></div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="color:var(--accent);">📈 BUY SETUP</div>
+        <table class="rules-table">
+          <tbody>
+            <tr>
+              <td style="width:90px;color:var(--muted);font-size:.75rem;">EMA Filter</td>
+              <td>Price must be <strong style="color:var(--accent);">above EMA 100</strong> at entry</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">Entry</td>
+              <td>Candle close <strong>above</strong> Psychological Zone</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL (Breakout)</td>
+              <td>Below the <strong>lowest point of S2</strong> + breathing margin</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL (Pullback)</td>
+              <td>Below the <strong>pullback low</strong> + margin</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL Rule</td>
+              <td>SL must be <strong style="color:var(--danger);">below EMA 100</strong> (guardrail)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">Take Profit</td>
+              <td>Origin of S1 (top/peak where trend started)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="color:var(--danger);">📉 SELL SETUP</div>
+        <table class="rules-table">
+          <tbody>
+            <tr>
+              <td style="width:90px;color:var(--muted);font-size:.75rem;">EMA Filter</td>
+              <td>Price must be <strong style="color:var(--danger);">below EMA 100</strong> at entry</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">Entry</td>
+              <td>Candle close <strong>below</strong> Psychological Zone</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL (Breakout)</td>
+              <td>Above the <strong>highest point of S2</strong> + breathing margin</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL (Pullback)</td>
+              <td>Above the <strong>pullback high</strong> + margin</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">SL Rule</td>
+              <td>SL must be <strong style="color:var(--danger);">above EMA 100</strong> (guardrail)</td>
+            </tr>
+            <tr>
+              <td style="color:var(--muted);font-size:.75rem;">Take Profit</td>
+              <td>Origin of S1 (bottom/trough where trend started)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CHECKLIST TAB ===== -->
+  <div id="tab-checklist" class="tab-content">
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span>PRE-TRADE VALIDATION</span>
+        <span id="progress-text">0 / 12</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div class="card-title">🔍 Setup Validation</div>
+        <div class="checklist" id="checklist-setup">
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Market is a Major or Minor Forex pair (no exotics)</div>
+            <span class="check-tag tag-red">FILTER</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Month is not March</div>
+            <span class="check-tag tag-red">FILTER</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Current time is between 02:00 and 15:00 ET (EST) · 03:00–16:00 ET (EDT)</div>
+            <span class="check-tag tag-orange">TIME</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Structure 1 is clearly defined — identifiable trend with Dow Theory</div>
+            <span class="check-tag tag-blue">S1</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Trendline drawn connecting structural highs/lows of S1</div>
+            <span class="check-tag tag-blue">S1</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Structure 2 consolidation identified (range, DT/DB, H&S)</div>
+            <span class="check-tag tag-blue">S2</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card-title">✅ Entry Validation</div>
+        <div class="checklist" id="checklist-entry">
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">EMA 100 confirmed — price above (buy) or below (sell)</div>
+            <span class="check-tag tag-red">FILTER</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Breakout candle closed cleanly outside Psychological Zone</div>
+            <span class="check-tag tag-green">ENTRY</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">SL placed at correct structural point with breathing margin</div>
+            <span class="check-tag tag-orange">SL</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">SL respects EMA 100 guardrail (below for buy / above for sell)</div>
+            <span class="check-tag tag-orange">SL</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">TP placed at origin of S1 (treated as zone, not exact price)</div>
+            <span class="check-tag tag-green">TP</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">RR ratio is minimum 1:2.5 — if not, ABORT trade</div>
+            <span class="check-tag tag-red">RR</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-16" style="display:flex;gap:10px;">
+      <button class="btn btn-ghost" onclick="resetChecklist()">Reset Checklist</button>
+      <div id="verdict-msg" style="flex:1;"></div>
+    </div>
+  </div>
+
+  <!-- ===== CALCULATOR TAB ===== -->
+  <div id="tab-calculator" class="tab-content">
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🔢 Risk Calculator</div>
+        <div class="calc-form">
+          <div class="form-group">
+            <label>Account Balance ($)</label>
+            <input type="number" id="balance" placeholder="e.g. 10000" oninput="calculate()" />
+          </div>
+          <div class="form-group">
+            <label>Risk % Per Trade</label>
+            <select id="risk-pct" onchange="calculate()">
+              <option value="1">1% (Standard)</option>
+              <option value="2">2% (Low frequency)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Entry Price</label>
+            <input type="number" id="entry" placeholder="e.g. 1.2500" step="0.0001" oninput="calculate()" />
+          </div>
+          <div class="form-group">
+            <label>Stop Loss Price</label>
+            <input type="number" id="sl" placeholder="e.g. 1.2450" step="0.0001" oninput="calculate()" />
+          </div>
+          <div class="form-group">
+            <label>Take Profit Price</label>
+            <input type="number" id="tp" placeholder="e.g. 1.2650" step="0.0001" oninput="calculate()" />
+          </div>
+          <div class="form-group">
+            <label>Direction</label>
+            <select id="direction" onchange="calculate()">
+              <option value="buy">Buy (Long)</option>
+              <option value="sell">Sell (Short)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📈 Trade Output</div>
+        <div class="calc-result">
+          <div class="calc-result-grid">
+            <div class="calc-result-item">
+              <label>Risk Amount ($)</label>
+              <div class="val green" id="r-risk-amt">—</div>
+            </div>
+            <div class="calc-result-item">
+              <label>SL Distance (pips)</label>
+              <div class="val" id="r-sl-pips">—</div>
+            </div>
+            <div class="calc-result-item">
+              <label>TP Distance (pips)</label>
+              <div class="val" id="r-tp-pips">—</div>
+            </div>
+            <div class="calc-result-item">
+              <label>Risk:Reward Ratio</label>
+              <div class="val" id="r-rr">—</div>
+            </div>
+            <div class="calc-result-item">
+              <label>Potential Profit ($)</label>
+              <div class="val green" id="r-profit">—</div>
+            </div>
+            <div class="calc-result-item">
+              <label>Status</label>
+              <div class="val" id="r-status">—</div>
+            </div>
+          </div>
+          <div id="r-verdict" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="section-divider"><span>Daily / Weekly / Monthly Limits</span></div>
+        <div class="card" style="background:var(--surface2);padding:14px;">
+          <table class="rules-table">
+            <thead><tr><th>Period</th><th>Max Risk</th><th>In $ (on balance)</th></tr></thead>
+            <tbody id="limits-table">
+              <tr><td style="color:var(--muted)">Daily</td><td style="color:var(--accent2);font-family:'Space Mono',monospace;">2%</td><td id="l-daily" style="font-family:'Space Mono',monospace;">—</td></tr>
+              <tr><td style="color:var(--muted)">Weekly</td><td style="color:var(--accent3);font-family:'Space Mono',monospace;">4%</td><td id="l-weekly" style="font-family:'Space Mono',monospace;">—</td></tr>
+              <tr><td style="color:var(--muted)">Monthly</td><td style="color:var(--warn);font-family:'Space Mono',monospace;">12%</td><td id="l-monthly" style="font-family:'Space Mono',monospace;">—</td></tr>
+              <tr><td style="color:var(--muted)">Monthly (Prop)</td><td style="color:var(--danger);font-family:'Space Mono',monospace;">10%</td><td id="l-prop" style="font-family:'Space Mono',monospace;">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ROUTINE TAB ===== -->
+  <div id="tab-routine" class="tab-content">
+
+    <div class="card mb-16">
+      <div class="card-title">📅 Weekly Workflow Distribution</div>
+      <div class="week-grid">
+        <div class="day-card excluded">
+          <div class="day-name">SAT</div>
+          <div class="day-pct" style="color:var(--accent);">25%</div>
+          <div class="day-task">Full analysis session. Map S1, draw S2 zones, program alerts.</div>
+        </div>
+        <div class="day-card excluded">
+          <div class="day-name">SUN</div>
+          <div class="day-pct" style="color:var(--accent);">25%</div>
+          <div class="day-task">Continuation of weekend analysis. Refine zones & setups.</div>
+        </div>
+        <div class="day-card active-day">
+          <div class="day-name">MON</div>
+          <div class="day-pct" style="color:var(--accent3);">—</div>
+          <div class="day-task">Execute only on alerts. No screen time unless triggered.</div>
+        </div>
+        <div class="day-card active-day">
+          <div class="day-name">TUE</div>
+          <div class="day-pct" style="color:var(--accent3);">—</div>
+          <div class="day-task">Execute only on alerts.</div>
+        </div>
+        <div class="day-card active-day" style="border-color:rgba(91,143,255,0.4);">
+          <div class="day-name">WED</div>
+          <div class="day-pct" style="color:var(--accent3);">15%</div>
+          <div class="day-task">Secondary analysis session. New setups + adjust active SL levels.</div>
+        </div>
+        <div class="day-card active-day">
+          <div class="day-name">THU</div>
+          <div class="day-pct" style="color:var(--accent3);">—</div>
+          <div class="day-task">Execute only on alerts.</div>
+        </div>
+        <div class="day-card active-day">
+          <div class="day-name">FRI</div>
+          <div class="day-pct" style="color:var(--accent3);">—</div>
+          <div class="day-task">Execute only on alerts. Wrap week.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:.72rem;color:var(--muted);">Work split:</span>
+        <span class="pill pill-green">Weekend — 50% (Analysis)</span>
+        <span class="pill pill-orange">Weekdays — 35% (Execution)</span>
+        <span class="pill" style="color:var(--accent3);border-color:rgba(91,143,255,0.25);background:rgba(91,143,255,0.07);">Wednesday — 15% (Review)</span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⏰ Execution Window</div>
+        <div style="text-align:center;padding:16px 0 10px;">
+          <div style="font-family:'Space Mono',monospace;font-size:2.2rem;font-weight:700;color:var(--accent);">02:00 – 15:00</div>
+          <div style="font-size:.78rem;color:var(--muted);margin-top:6px;">Eastern Standard Time (EST · UTC−5)</div>
+        </div>
+        <div style="text-align:center;padding:0 0 14px;">
+          <div style="font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;color:var(--accent3);">03:00 – 16:00</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:4px;">Eastern Daylight Time (EDT · UTC−4)</div>
+        </div>
+        <div style="background:rgba(255,77,106,0.07);border:1px solid rgba(255,77,106,0.2);border-radius:6px;padding:12px 14px;font-size:.8rem;color:var(--danger);">
+          ⛔ Never enter new positions outside this window
+        </div>
+        <div style="margin-top:8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;font-size:.75rem;color:var(--muted);">
+          ℹ EST is Nov–Mar · EDT is Mar–Nov (US DST)
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Weekend Analysis Checklist</div>
+        <div class="checklist">
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Scan all eligible pairs for Structure 1 formations</div>
+            <span class="check-tag tag-blue">S1</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Draw trendlines on active S1 structures</div>
+            <span class="check-tag tag-blue">S1</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Identify S2 consolidation zones and draw horizontal levels</div>
+            <span class="check-tag tag-blue">S2</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Program alerts slightly past Psychological Zone boundaries</div>
+            <span class="check-tag tag-green">ALERT</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Pre-calculate SL, TP, and RR for each valid setup</div>
+            <span class="check-tag tag-orange">PREP</span>
+          </div>
+          <div class="check-item" onclick="toggleCheck(this)">
+            <div class="check-box"></div>
+            <div class="check-text">Confirm monthly limits not already breached</div>
+            <span class="check-tag tag-yellow">RISK</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FOREX PAIRS TAB ===== -->
+  <div id="tab-pairs" class="tab-content">
+
+    <div class="grid-2 mb-16">
+      <div class="stat-card green">
+        <div class="stat-label">Total Allowed Pairs</div>
+        <div class="stat-value green">28</div>
+        <div class="stat-sub">7 Majors + 21 Minors</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-label">Banned</div>
+        <div class="stat-value orange">Exotics</div>
+        <div class="stat-sub">High spread + swap costs</div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <span style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:.06em;">FILTER:</span>
+      <button class="btn btn-primary" id="filter-all" onclick="filterPairs('all')" style="padding:6px 14px;font-size:.72rem;">ALL</button>
+      <button class="btn btn-ghost" id="filter-major" onclick="filterPairs('major')" style="padding:6px 14px;font-size:.72rem;">MAJORS</button>
+      <button class="btn btn-ghost" id="filter-minor" onclick="filterPairs('minor')" style="padding:6px 14px;font-size:.72rem;">MINORS</button>
+      <button class="btn btn-ghost" id="filter-usd" onclick="filterPairs('usd')" style="padding:6px 14px;font-size:.72rem;">USD</button>
+      <button class="btn btn-ghost" id="filter-eur" onclick="filterPairs('eur')" style="padding:6px 14px;font-size:.72rem;">EUR</button>
+      <button class="btn btn-ghost" id="filter-gbp" onclick="filterPairs('gbp')" style="padding:6px 14px;font-size:.72rem;">GBP</button>
+      <button class="btn btn-ghost" id="filter-jpy" onclick="filterPairs('jpy')" style="padding:6px 14px;font-size:.72rem;">JPY</button>
+    </div>
+
+    <!-- Majors -->
+    <div id="section-major">
+      <div class="section-divider"><span>Major Pairs (7)</span></div>
+      <div class="card mb-16">
+        <table class="rules-table" id="table-major">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Base / Quote</th>
+              <th>Nickname</th>
+              <th>Avg Daily Range</th>
+              <th>Spread</th>
+              <th>Best Session (ET)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="pair-row major usd eur">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">EUR/USD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / US Dollar</td>
+              <td><span class="check-tag tag-blue">The Fiber</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">70–120 pips</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;">★ Lowest</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">GBP/USD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / US Dollar</td>
+              <td><span class="check-tag tag-green">The Cable</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">100–150 pips</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;">★ Low</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">USD/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">US Dollar / Japanese Yen</td>
+              <td><span class="check-tag tag-blue">Ninja / Gopher</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–90 pips</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;">★ Low</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–09:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">USD/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">US Dollar / Swiss Franc</td>
+              <td><span class="check-tag tag-orange">The Swissie</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;">★ Low</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">USD/CAD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">US Dollar / Canadian Dollar</td>
+              <td><span class="check-tag tag-orange">The Loonie</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">08:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">AUD/USD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Australian Dollar / US Dollar</td>
+              <td><span class="check-tag tag-blue">The Aussie</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–09:00 ET</td>
+            </tr>
+            <tr class="pair-row major usd">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--accent);">NZD/USD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">New Zealand Dollar / US Dollar</td>
+              <td><span class="check-tag tag-blue">The Kiwi</span></td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–80 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–08:00 ET</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Minors -->
+    <div id="section-minor">
+      <div class="section-divider"><span>Minor Pairs / Crosses (21)</span></div>
+      <div class="card">
+        <table class="rules-table" id="table-minor">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>Base / Quote</th>
+              <th>Avg Daily Range</th>
+              <th>Spread</th>
+              <th>Best Session (ET)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- EUR crosses -->
+            <tr class="pair-row minor eur gbp"><td colspan="5" style="background:rgba(0,229,160,0.03);font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;padding:8px 12px;">EUR CROSSES</td></tr>
+            <tr class="pair-row minor eur gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/GBP</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / British Pound</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–80 pips</td>
+              <td><span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:.8rem;">★ Low</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor eur jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">80–130 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor eur">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / Swiss Franc</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–90 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor eur">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/CAD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / Canadian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">70–120 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row minor eur">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/AUD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / Australian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">80–140 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor eur">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">EUR/NZD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Euro / New Zealand Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">100–160 pips</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-size:.8rem;">Higher</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <!-- GBP crosses -->
+            <tr class="pair-row minor gbp"><td colspan="5" style="background:rgba(0,229,160,0.03);font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;padding:8px 12px;">GBP CROSSES</td></tr>
+            <tr class="pair-row minor gbp jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">GBP/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">120–200 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">GBP/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / Swiss Franc</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">80–130 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">GBP/CAD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / Canadian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">100–170 pips</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-size:.8rem;">Higher</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row minor gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">GBP/AUD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / Australian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">120–200 pips</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-size:.8rem;">Higher</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor gbp">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">GBP/NZD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">British Pound / New Zealand Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">140–220 pips</td>
+              <td><span style="color:var(--accent2);font-family:'Space Mono',monospace;font-size:.8rem;">Higher</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <!-- JPY crosses -->
+            <tr class="pair-row minor jpy"><td colspan="5" style="background:rgba(0,229,160,0.03);font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;padding:8px 12px;">JPY CROSSES</td></tr>
+            <tr class="pair-row minor jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">CAD/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Canadian Dollar / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row minor jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">AUD/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Australian Dollar / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–09:00 ET</td>
+            </tr>
+            <tr class="pair-row minor jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">NZD/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">New Zealand Dollar / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">55–90 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–09:00 ET</td>
+            </tr>
+            <tr class="pair-row minor jpy">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">CHF/JPY</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Swiss Franc / Japanese Yen</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">60–100 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–12:00 ET</td>
+            </tr>
+            <!-- Other crosses -->
+            <tr class="pair-row minor"><td colspan="5" style="background:rgba(0,229,160,0.03);font-family:'Space Mono',monospace;font-size:.65rem;color:var(--muted);letter-spacing:.08em;padding:8px 12px;">OTHER CROSSES</td></tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">AUD/CAD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Australian Dollar / Canadian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–80 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">AUD/NZD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Australian Dollar / New Zealand Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">40–70 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–09:00 ET</td>
+            </tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">AUD/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Australian Dollar / Swiss Franc</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–90 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">NZD/CAD</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">New Zealand Dollar / Canadian Dollar</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–80 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–15:00 ET</td>
+            </tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">NZD/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">New Zealand Dollar / Swiss Franc</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">50–80 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">02:00–12:00 ET</td>
+            </tr>
+            <tr class="pair-row minor">
+              <td><span style="font-family:'Space Mono',monospace;font-weight:700;color:var(--text);">CAD/CHF</span></td>
+              <td style="color:var(--muted);font-size:.78rem;">Canadian Dollar / Swiss Franc</td>
+              <td style="font-family:'Space Mono',monospace;font-size:.82rem;">40–70 pips</td>
+              <td><span style="color:var(--accent3);font-family:'Space Mono',monospace;font-size:.8rem;">Medium</span></td>
+              <td style="font-size:.78rem;color:var(--muted);">03:00–15:00 ET</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:.75rem;color:var(--muted);">
+      ⚠ <strong style="color:var(--text);">Reminder:</strong> Exotic pairs are strictly banned — high spread and overnight swap costs degrade long-term performance. Stick to majors and minors only.
+    </div>
+  </div>
+
+  <!-- ===== TA TRACKER TAB ===== -->
+  <div id="tab-tracker" class="tab-content">
+
+    <!-- Summary counts -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;">Technical Analysis Tracker</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-family:'Space Mono',monospace;font-size:.68rem;" id="sync-status">⟳ Loading...</span>
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);"></div>
+        <span style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);">FIREBASE SYNC</span>
+      </div>
+    </div>
+    <div class="grid-4 mb-16" id="tracker-summary">
+      <div class="stat-card" style="border-top:2px solid #5b8fff;">
+        <div class="stat-label">Construction</div>
+        <div class="stat-value" style="color:#5b8fff;" id="count-construction">0</div>
+        <div class="stat-sub">Drawing S1 / S2</div>
+      </div>
+      <div class="stat-card" style="border-top:2px solid var(--warn);">
+        <div class="stat-label">Monitoring</div>
+        <div class="stat-value" style="color:var(--warn);" id="count-monitoring">0</div>
+        <div class="stat-sub">Alert set, waiting</div>
+      </div>
+      <div class="stat-card" style="border-top:2px solid var(--accent);">
+        <div class="stat-label">In Progress</div>
+        <div class="stat-value" style="color:var(--accent);" id="count-inprogress">0</div>
+        <div class="stat-sub">Trade live</div>
+      </div>
+      <div class="stat-card" style="border-top:2px solid var(--muted);">
+        <div class="stat-label">Closed</div>
+        <div class="stat-value" style="color:var(--muted);" id="count-closed">0</div>
+        <div class="stat-sub">Trade finished</div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <span style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);letter-spacing:.06em;">VIEW:</span>
+      <button class="btn btn-primary" id="tfilter-all" onclick="filterTracker('all')" style="padding:6px 14px;font-size:.72rem;">ALL</button>
+      <button class="btn btn-ghost" id="tfilter-construction" onclick="filterTracker('construction')" style="padding:6px 14px;font-size:.72rem;">CONSTRUCTION</button>
+      <button class="btn btn-ghost" id="tfilter-monitoring" onclick="filterTracker('monitoring')" style="padding:6px 14px;font-size:.72rem;">MONITORING</button>
+      <button class="btn btn-ghost" id="tfilter-inprogress" onclick="filterTracker('inprogress')" style="padding:6px 14px;font-size:.72rem;">IN PROGRESS</button>
+      <button class="btn btn-ghost" id="tfilter-closed" onclick="filterTracker('closed')" style="padding:6px 14px;font-size:.72rem;">CLOSED</button>
+      <div style="margin-left:auto;">
+        <button class="btn btn-ghost" onclick="clearAllTracker()" style="padding:6px 14px;font-size:.72rem;color:var(--danger);border-color:rgba(255,77,106,0.3);">CLEAR ALL</button>
+      </div>
+    </div>
+
+    <!-- Tracker table -->
+    <div class="card">
+      <table class="rules-table" id="tracker-table">
+        <thead>
+          <tr>
+            <th>Pair</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th style="width:35%;">Note</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody id="tracker-body"></tbody>
+      </table>
+    </div>
+
+  </div>
+
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+  // ── FIREBASE INIT ──
   const firebaseConfig = {
     apiKey: "AIzaSyCgV77MbarV1td4BU7s3m4wHfloVtt17hk",
     authDomain: "dsdashboard-1f801.firebaseapp.com",
@@ -40,85 +1569,334 @@
     messagingSenderId: "603064397361",
     appId: "1:603064397361:web:20881938008de687fcef10"
   };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const trackerRef = ref(db, 'tracker');
 
-  function log(msg, type = 'info') {
-    const el = document.getElementById('log');
-    el.innerHTML += `<span class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</span><br>`;
+  // ── ALL PAIRS LIST ──
+  const ALL_PAIRS = [
+    { pair: 'EUR/USD', type: 'Major' },
+    { pair: 'GBP/USD', type: 'Major' },
+    { pair: 'USD/JPY', type: 'Major' },
+    { pair: 'USD/CHF', type: 'Major' },
+    { pair: 'USD/CAD', type: 'Major' },
+    { pair: 'AUD/USD', type: 'Major' },
+    { pair: 'NZD/USD', type: 'Major' },
+    { pair: 'EUR/GBP', type: 'Minor' },
+    { pair: 'EUR/JPY', type: 'Minor' },
+    { pair: 'EUR/CHF', type: 'Minor' },
+    { pair: 'EUR/CAD', type: 'Minor' },
+    { pair: 'EUR/AUD', type: 'Minor' },
+    { pair: 'EUR/NZD', type: 'Minor' },
+    { pair: 'GBP/JPY', type: 'Minor' },
+    { pair: 'GBP/CHF', type: 'Minor' },
+    { pair: 'GBP/CAD', type: 'Minor' },
+    { pair: 'GBP/AUD', type: 'Minor' },
+    { pair: 'GBP/NZD', type: 'Minor' },
+    { pair: 'CAD/JPY', type: 'Minor' },
+    { pair: 'AUD/JPY', type: 'Minor' },
+    { pair: 'NZD/JPY', type: 'Minor' },
+    { pair: 'CHF/JPY', type: 'Minor' },
+    { pair: 'AUD/CAD', type: 'Minor' },
+    { pair: 'AUD/NZD', type: 'Minor' },
+    { pair: 'AUD/CHF', type: 'Minor' },
+    { pair: 'NZD/CAD', type: 'Minor' },
+    { pair: 'NZD/CHF', type: 'Minor' },
+    { pair: 'CAD/CHF', type: 'Minor' },
+  ];
+
+  const STATUS_CONFIG = {
+    '':             { label: '— None',       color: 'var(--muted)',  bg: 'transparent' },
+    'construction': { label: 'Construction', color: '#5b8fff',       bg: 'rgba(91,143,255,0.08)' },
+    'monitoring':   { label: 'Monitoring',   color: 'var(--warn)',   bg: 'rgba(255,204,0,0.08)' },
+    'inprogress':   { label: 'In Progress',  color: 'var(--accent)', bg: 'rgba(0,229,160,0.08)' },
+    'closed':       { label: 'Closed',       color: 'var(--muted)',  bg: 'rgba(90,100,120,0.08)' },
+  };
+
+  let trackerData = {};
+  let activeFilter = 'all';
+  let saveTimeout = null;
+
+  // ── SYNC STATUS ──
+  function setSyncStatus(state) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    const states = {
+      loading: { text: '⟳ Loading...', color: 'var(--muted)'  },
+      saving:  { text: '⟳ Saving...',  color: 'var(--warn)'   },
+      synced:  { text: '✓ Synced',     color: 'var(--accent)' },
+      error:   { text: '✗ Sync failed',color: 'var(--danger)' },
+    };
+    const s = states[state];
+    el.textContent = s.text;
+    el.style.color = s.color;
   }
 
-  let db;
-
-  try {
-    log('Initializing Firebase app...', 'info');
-    const app = initializeApp(firebaseConfig);
-    log('✓ Firebase app initialized', 'ok');
-
-    db = getDatabase(app);
-    log('✓ Realtime Database instance created', 'ok');
-    log('✓ Database URL: https://dsdashboard-1f801-default-rtdb.firebaseio.com', 'ok');
-  } catch(e) {
-    log('✗ Firebase init failed: ' + e.message, 'err');
-  }
-
-  window.runTest = async () => {
-    document.getElementById('log').innerHTML = '';
-    log('Starting full test...', 'info');
-
-    // Step 1: Init check
-    if (!db) { log('✗ Database not initialized', 'err'); return; }
-    log('✓ Database ready', 'ok');
-
-    // Step 2: Write
+  // ── LOAD FROM FIREBASE ──
+  async function loadData() {
+    setSyncStatus('loading');
     try {
-      log('Writing test data...', 'info');
-      await set(ref(db, 'test'), { value: 'hello', ts: Date.now() });
-      log('✓ Write successful', 'ok');
+      const snap = await get(trackerRef);
+      trackerData = snap.val() || {};
+      setSyncStatus('synced');
     } catch(e) {
-      log('✗ Write failed: ' + e.message, 'err');
-      log('Error code: ' + e.code, 'err');
+      console.error('Firebase load error — code:', e.code, '— message:', e.message);
+      setSyncStatus('error');
+      // Show error detail in the sync status for debugging
+      const el = document.getElementById('sync-status');
+      if (el) el.title = e.code + ': ' + e.message;
+    }
+  }
+
+  // ── SAVE TO FIREBASE (debounced 800ms) ──
+  function saveData() {
+    clearTimeout(saveTimeout);
+    setSyncStatus('saving');
+    saveTimeout = setTimeout(async () => {
+      try {
+        await set(trackerRef, trackerData);
+        setSyncStatus('synced');
+      } catch(e) {
+        console.error('Firebase save error — code:', e.code, '— message:', e.message);
+        setSyncStatus('error');
+        const el = document.getElementById('sync-status');
+        if (el) el.title = e.code + ': ' + e.message;
+      }
+    }, 800);
+  }
+
+  // ── RENDER TRACKER TABLE ──
+  function renderTracker() {
+    const tbody = document.getElementById('tracker-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    let counts = { construction: 0, monitoring: 0, inprogress: 0, closed: 0 };
+
+    ALL_PAIRS.forEach(({ pair, type }) => {
+      const entry = trackerData[pair] || { status: '', note: '', updated: '' };
+      if (entry.status && counts[entry.status] !== undefined) counts[entry.status]++;
+      const cfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG[''];
+      const hide = activeFilter !== 'all' && entry.status !== activeFilter;
+
+      const tr = document.createElement('tr');
+      tr.className = 'tracker-row';
+      tr.dataset.status = entry.status;
+      tr.style.display = hide ? 'none' : '';
+      if (entry.status) tr.style.background = cfg.bg;
+
+      // Select element
+      const select = document.createElement('select');
+      select.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+        padding:5px 8px;color:${cfg.color};font-family:'Space Mono',monospace;
+        font-size:.72rem;cursor:pointer;outline:none;width:130px;`;
+      Object.entries(STATUS_CONFIG).forEach(([val, c]) => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = c.label;
+        opt.selected = entry.status === val;
+        opt.style.color = c.color;
+        opt.style.background = 'var(--surface2)';
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', (e) => updateStatus(pair, e.target.value));
+
+      // Note input
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = entry.note || '';
+      input.placeholder = 'Add a note...';
+      input.maxLength = 80;
+      input.style.cssText = `background:transparent;border:none;border-bottom:1px solid var(--border);
+        color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82rem;
+        width:100%;padding:4px 2px;outline:none;`;
+      input.addEventListener('change', (e) => updateNote(pair, e.target.value));
+
+      const tdPair = document.createElement('td');
+      tdPair.innerHTML = `<span style="font-family:'Space Mono',monospace;font-weight:700;font-size:.85rem;color:var(--text);">${pair}</span>`;
+
+      const tdType = document.createElement('td');
+      tdType.innerHTML = `<span class="check-tag ${type === 'Major' ? 'tag-green' : 'tag-blue'}">${type}</span>`;
+
+      const tdStatus = document.createElement('td');
+      tdStatus.appendChild(select);
+
+      const tdNote = document.createElement('td');
+      tdNote.appendChild(input);
+
+      const tdUpdated = document.createElement('td');
+      tdUpdated.style.cssText = "font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);white-space:nowrap;";
+      tdUpdated.textContent = entry.updated || '—';
+
+      tr.append(tdPair, tdType, tdStatus, tdNote, tdUpdated);
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('count-construction').textContent = counts.construction;
+    document.getElementById('count-monitoring').textContent   = counts.monitoring;
+    document.getElementById('count-inprogress').textContent   = counts.inprogress;
+    document.getElementById('count-closed').textContent       = counts.closed;
+  }
+
+  // ── UPDATE HANDLERS ──
+  function updateStatus(pair, status) {
+    if (!trackerData[pair]) trackerData[pair] = { status: '', note: '', updated: '' };
+    trackerData[pair].status = status;
+    trackerData[pair].updated = nowStr();
+    saveData();
+    renderTracker();
+  }
+
+  function updateNote(pair, note) {
+    if (!trackerData[pair]) trackerData[pair] = { status: '', note: '', updated: '' };
+    trackerData[pair].note = note;
+    trackerData[pair].updated = nowStr();
+    saveData();
+  }
+
+  function nowStr() {
+    const d = new Date();
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' })
+      + ' ' + d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  // ── TRACKER FILTER ──
+  function filterTracker(filter) {
+    activeFilter = filter;
+    document.querySelectorAll('[id^="tfilter-"]').forEach(b => {
+      b.className = 'btn btn-ghost';
+      b.style.padding = '6px 14px'; b.style.fontSize = '.72rem';
+    });
+    const btn = document.getElementById('tfilter-' + filter);
+    if (btn) { btn.className = 'btn btn-primary'; btn.style.padding = '6px 14px'; btn.style.fontSize = '.72rem'; }
+    renderTracker();
+  }
+
+  // ── CLEAR ALL ──
+  function clearAllTracker() {
+    if (!confirm('Reset all statuses and notes? This cannot be undone.')) return;
+    trackerData = {};
+    saveData();
+    renderTracker();
+  }
+
+  // ── TAB SWITCHING ──
+  function switchTab(id, targetEl) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    targetEl.classList.add('active');
+  }
+
+  // ── CHECKLIST ──
+  function toggleCheck(el) {
+    el.classList.toggle('checked');
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const all     = document.querySelectorAll('#tab-checklist .check-item');
+    const checked = document.querySelectorAll('#tab-checklist .check-item.checked');
+    const total = all.length, done = checked.length;
+    const pct = Math.round((done / total) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('progress-text').textContent = done + ' / ' + total;
+    const vm = document.getElementById('verdict-msg');
+    if (done === total) {
+      vm.innerHTML = '<div class="verdict pass">✓ ALL CHECKS PASSED — TRADE IS VALID</div>';
+    } else if (done >= 9) {
+      vm.innerHTML = `<div class="verdict" style="background:rgba(255,204,0,.08);color:var(--warn);border:1px solid rgba(255,204,0,.3);">⚠ Almost there — ${total - done} check(s) remaining</div>`;
+    } else { vm.innerHTML = ''; }
+  }
+
+  function resetChecklist() {
+    document.querySelectorAll('#tab-checklist .check-item').forEach(el => el.classList.remove('checked'));
+    updateProgress();
+    document.getElementById('verdict-msg').innerHTML = '';
+  }
+
+  // ── FOREX PAIRS FILTER ──
+  function filterPairs(type) {
+    document.querySelectorAll('[id^="filter-"]').forEach(b => {
+      b.className = 'btn btn-ghost'; b.style.padding = '6px 14px'; b.style.fontSize = '.72rem';
+    });
+    const activeBtn = document.getElementById('filter-' + type);
+    activeBtn.className = 'btn btn-primary'; activeBtn.style.padding = '6px 14px'; activeBtn.style.fontSize = '.72rem';
+    const rows = document.querySelectorAll('.pair-row');
+    const majorSection = document.getElementById('section-major');
+    const minorSection = document.getElementById('section-minor');
+    rows.forEach(row => {
+      if (type === 'all') row.style.display = '';
+      else if (type === 'major') row.style.display = row.classList.contains('major') ? '' : 'none';
+      else if (type === 'minor') row.style.display = row.classList.contains('minor') ? '' : 'none';
+      else row.style.display = row.classList.contains(type) ? '' : 'none';
+    });
+    if (type === 'minor') { majorSection.style.display = 'none'; minorSection.style.display = ''; }
+    else if (type === 'major') { majorSection.style.display = ''; minorSection.style.display = 'none'; }
+    else { majorSection.style.display = ''; minorSection.style.display = ''; }
+  }
+
+  // ── RISK CALCULATOR ──
+  function calculate() {
+    const balance = parseFloat(document.getElementById('balance').value);
+    const riskPct = parseFloat(document.getElementById('risk-pct').value) / 100;
+    const entry   = parseFloat(document.getElementById('entry').value);
+    const sl      = parseFloat(document.getElementById('sl').value);
+    const tp      = parseFloat(document.getElementById('tp').value);
+    const dir     = document.getElementById('direction').value;
+    if (!balance) {
+      ['l-daily','l-weekly','l-monthly','l-prop'].forEach(id => document.getElementById(id).textContent = '—');
       return;
     }
-
-    // Step 3: Read back
-    try {
-      log('Reading test data back...', 'info');
-      const snap = await get(ref(db, 'test'));
-      const val = snap.val();
-      log('✓ Read successful: ' + JSON.stringify(val), 'ok');
-    } catch(e) {
-      log('✗ Read failed: ' + e.message, 'err');
-      log('Error code: ' + e.code, 'err');
+    document.getElementById('l-daily').textContent   = '$' + (balance * 0.02).toFixed(2);
+    document.getElementById('l-weekly').textContent  = '$' + (balance * 0.04).toFixed(2);
+    document.getElementById('l-monthly').textContent = '$' + (balance * 0.12).toFixed(2);
+    document.getElementById('l-prop').textContent    = '$' + (balance * 0.10).toFixed(2);
+    if (!entry || !sl || !tp) return;
+    const riskAmt = balance * riskPct;
+    const slDist  = Math.abs(entry - sl);
+    const tpDist  = Math.abs(tp - entry);
+    if (slDist === 0) return;
+    const rr = tpDist / slDist;
+    const slPips = Math.round(slDist * 10000);
+    const tpPips = Math.round(tpDist * 10000);
+    const profit = riskAmt * rr;
+    let dirValid = !((dir === 'buy' && sl >= entry) || (dir === 'sell' && sl <= entry));
+    document.getElementById('r-risk-amt').textContent = '$' + riskAmt.toFixed(2);
+    document.getElementById('r-sl-pips').textContent  = slPips + ' pips';
+    document.getElementById('r-tp-pips').textContent  = tpPips + ' pips';
+    document.getElementById('r-rr').textContent       = '1:' + rr.toFixed(2);
+    document.getElementById('r-profit').textContent   = '$' + profit.toFixed(2);
+    const rrEl = document.getElementById('r-rr');
+    const statusEl = document.getElementById('r-status');
+    const verdictEl = document.getElementById('r-verdict');
+    if (!dirValid) {
+      statusEl.textContent = 'DIR ERR'; statusEl.style.color = 'var(--danger)';
+      verdictEl.innerHTML = '<div class="verdict fail">⛔ SL placement invalid for direction</div>'; return;
     }
-
-    // Step 4: Tracker path
-    try {
-      log('Testing tracker path...', 'info');
-      const snap = await get(ref(db, 'tracker'));
-      log('✓ Tracker path accessible. Data: ' + JSON.stringify(snap.val()), 'ok');
-    } catch(e) {
-      log('✗ Tracker path failed: ' + e.message, 'err');
+    if (rr >= 2.5) {
+      rrEl.style.color = 'var(--accent)'; statusEl.textContent = 'VALID'; statusEl.style.color = 'var(--accent)';
+      verdictEl.innerHTML = `<div class="verdict pass">✓ RR VALID — TRADE APPROVED (1:${rr.toFixed(2)})</div>`;
+    } else {
+      rrEl.style.color = 'var(--danger)'; statusEl.textContent = 'ABORT'; statusEl.style.color = 'var(--danger)';
+      verdictEl.innerHTML = `<div class="verdict fail">⛔ RR BELOW 1:2.5 — ABORT TRADE (current: 1:${rr.toFixed(2)})</div>`;
     }
-  };
+  }
 
-  window.testWrite = async () => {
-    try {
-      log('Manual write test...', 'info');
-      await set(ref(db, 'tracker/EURUSD'), { status: 'monitoring', note: 'test note', updated: 'now' });
-      log('✓ Write to tracker/EURUSD successful', 'ok');
-    } catch(e) {
-      log('✗ Write failed: ' + e.message + ' | code: ' + e.code, 'err');
-    }
-  };
+  // ── EXPOSE FUNCTIONS TO HTML onclick HANDLERS ──
+  window.switchTab        = (id, el) => switchTab(id, el);
+  window.toggleCheck      = (el) => toggleCheck(el);
+  window.resetChecklist   = () => resetChecklist();
+  window.filterPairs      = (t) => filterPairs(t);
+  window.filterTracker    = (f) => filterTracker(f);
+  window.clearAllTracker  = () => clearAllTracker();
+  window.calculate        = () => calculate();
 
-  window.testRead = async () => {
-    try {
-      log('Manual read test...', 'info');
-      const snap = await get(ref(db, 'tracker'));
-      log('✓ Read result: ' + JSON.stringify(snap.val()), 'ok');
-    } catch(e) {
-      log('✗ Read failed: ' + e.message + ' | code: ' + e.code, 'err');
-    }
-  };
+  // ── INIT ──
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadData();
+    renderTracker();
+  });
 </script>
+
 </body>
 </html>
