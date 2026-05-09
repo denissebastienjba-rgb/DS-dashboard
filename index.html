@@ -5,27 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Double Structure Strategy — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCgV77MbarV1td4BU7s3m4wHfloVtt17hk",
-    authDomain: "dsdashboard-1f801.firebaseapp.com",
-    databaseURL: "https://dsdashboard-1f801-default-rtdb.firebaseio.com",
-    projectId: "dsdashboard-1f801",
-    storageBucket: "dsdashboard-1f801.firebasestorage.app",
-    messagingSenderId: "603064397361",
-    appId: "1:603064397361:web:20881938008de687fcef10"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // Expose to global scope for use in non-module script
-  window._fbSet = (data) => set(ref(db, 'tracker'), data);
-  window._fbGet = () => get(ref(db, 'tracker')).then(snap => snap.val());
-</script>
 <style>
   :root {
     --bg: #0a0c0f;
@@ -625,13 +605,13 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('overview')">Overview</button>
-    <button class="tab" onclick="switchTab('anatomy')">Structure Anatomy</button>
-    <button class="tab" onclick="switchTab('checklist')">Trade Checklist</button>
-    <button class="tab" onclick="switchTab('calculator')">Risk Calculator</button>
-    <button class="tab" onclick="switchTab('routine')">Weekly Routine</button>
-    <button class="tab" onclick="switchTab('pairs')">Forex Pairs</button>
-    <button class="tab" onclick="switchTab('tracker')">TA Tracker</button>
+    <button class="tab active" onclick="switchTab('overview', this)">Overview</button>
+    <button class="tab" onclick="switchTab('anatomy', this)">Structure Anatomy</button>
+    <button class="tab" onclick="switchTab('checklist', this)">Trade Checklist</button>
+    <button class="tab" onclick="switchTab('calculator', this)">Risk Calculator</button>
+    <button class="tab" onclick="switchTab('routine', this)">Weekly Routine</button>
+    <button class="tab" onclick="switchTab('pairs', this)">Forex Pairs</button>
+    <button class="tab" onclick="switchTab('tracker', this)">TA Tracker</button>
   </div>
 
   <!-- ===== OVERVIEW TAB ===== -->
@@ -1575,7 +1555,24 @@
 
 </div>
 
-<script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ── FIREBASE INIT ──
+  const firebaseConfig = {
+    apiKey: "AIzaSyCgV77MbarV1td4BU7s3m4wHfloVtt17hk",
+    authDomain: "dsdashboard-1f801.firebaseapp.com",
+    databaseURL: "https://dsdashboard-1f801-default-rtdb.firebaseio.com",
+    projectId: "dsdashboard-1f801",
+    storageBucket: "dsdashboard-1f801.firebasestorage.app",
+    messagingSenderId: "603064397361",
+    appId: "1:603064397361:web:20881938008de687fcef10"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const trackerRef = ref(db, 'tracker');
+
   // ── ALL PAIRS LIST ──
   const ALL_PAIRS = [
     { pair: 'EUR/USD', type: 'Major' },
@@ -1609,34 +1606,41 @@
   ];
 
   const STATUS_CONFIG = {
-    '':             { label: '— None',       color: 'var(--muted)',   bg: 'transparent' },
-    'construction': { label: 'Construction', color: '#5b8fff',        bg: 'rgba(91,143,255,0.08)' },
-    'monitoring':   { label: 'Monitoring',   color: 'var(--warn)',    bg: 'rgba(255,204,0,0.08)' },
-    'inprogress':   { label: 'In Progress',  color: 'var(--accent)',  bg: 'rgba(0,229,160,0.08)' },
-    'closed':       { label: 'Closed',       color: 'var(--muted)',   bg: 'rgba(90,100,120,0.08)' },
+    '':             { label: '— None',       color: 'var(--muted)',  bg: 'transparent' },
+    'construction': { label: 'Construction', color: '#5b8fff',       bg: 'rgba(91,143,255,0.08)' },
+    'monitoring':   { label: 'Monitoring',   color: 'var(--warn)',   bg: 'rgba(255,204,0,0.08)' },
+    'inprogress':   { label: 'In Progress',  color: 'var(--accent)', bg: 'rgba(0,229,160,0.08)' },
+    'closed':       { label: 'Closed',       color: 'var(--muted)',  bg: 'rgba(90,100,120,0.08)' },
   };
 
-  // ── FIREBASE CONFIG ──
   let trackerData = {};
   let activeFilter = 'all';
   let saveTimeout = null;
+
+  // ── SYNC STATUS ──
+  function setSyncStatus(state) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    const states = {
+      loading: { text: '⟳ Loading...', color: 'var(--muted)'  },
+      saving:  { text: '⟳ Saving...',  color: 'var(--warn)'   },
+      synced:  { text: '✓ Synced',     color: 'var(--accent)' },
+      error:   { text: '✗ Sync failed',color: 'var(--danger)' },
+    };
+    const s = states[state];
+    el.textContent = s.text;
+    el.style.color = s.color;
+  }
 
   // ── LOAD FROM FIREBASE ──
   async function loadData() {
     setSyncStatus('loading');
     try {
-      // Wait for Firebase SDK to be ready
-      let attempts = 0;
-      while (!window._fbGet && attempts < 20) {
-        await new Promise(r => setTimeout(r, 100));
-        attempts++;
-      }
-      if (!window._fbGet) throw new Error('Firebase not ready');
-      const data = await window._fbGet();
-      trackerData = data || {};
+      const snap = await get(trackerRef);
+      trackerData = snap.val() || {};
       setSyncStatus('synced');
     } catch(e) {
-      console.error('Load error:', e);
+      console.error('Firebase load error:', e);
       trackerData = {};
       setSyncStatus('error');
     }
@@ -1648,41 +1652,25 @@
     setSyncStatus('saving');
     saveTimeout = setTimeout(async () => {
       try {
-        await window._fbSet(trackerData);
+        await set(trackerRef, trackerData);
         setSyncStatus('synced');
       } catch(e) {
-        console.error('Save error:', e);
+        console.error('Firebase save error:', e);
         setSyncStatus('error');
       }
     }, 800);
   }
 
-  // ── SYNC STATUS INDICATOR ──
-  function setSyncStatus(state) {
-    const el = document.getElementById('sync-status');
-    if (!el) return;
-    const states = {
-      loading: { text: '⟳ Loading...', color: 'var(--muted)'  },
-      saving:  { text: '⟳ Saving...',  color: 'var(--warn)'   },
-      synced:  { text: '✓ Synced',     color: 'var(--accent)' },
-      error:   { text: '✗ Sync failed',color: 'var(--danger)' },
-    };
-    const s = states[state] || states.synced;
-    el.textContent = s.text;
-    el.style.color = s.color;
-  }
-
-  // ── RENDER TABLE ──
+  // ── RENDER TRACKER TABLE ──
   function renderTracker() {
     const tbody = document.getElementById('tracker-body');
+    if (!tbody) return;
     tbody.innerHTML = '';
-
     let counts = { construction: 0, monitoring: 0, inprogress: 0, closed: 0 };
 
     ALL_PAIRS.forEach(({ pair, type }) => {
       const entry = trackerData[pair] || { status: '', note: '', updated: '' };
       if (entry.status && counts[entry.status] !== undefined) counts[entry.status]++;
-
       const cfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG[''];
       const hide = activeFilter !== 'all' && entry.status !== activeFilter;
 
@@ -1692,41 +1680,53 @@
       tr.style.display = hide ? 'none' : '';
       if (entry.status) tr.style.background = cfg.bg;
 
-      tr.innerHTML = `
-        <td>
-          <span style="font-family:'Space Mono',monospace;font-weight:700;font-size:.85rem;color:var(--text);">${pair}</span>
-        </td>
-        <td>
-          <span class="check-tag ${type === 'Major' ? 'tag-green' : 'tag-blue'}">${type}</span>
-        </td>
-        <td>
-          <select onchange="updateStatus('${pair}', this.value)"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:5px;
-                   padding:5px 8px;color:${cfg.color};font-family:'Space Mono',monospace;
-                   font-size:.72rem;cursor:pointer;outline:none;width:130px;">
-            ${Object.entries(STATUS_CONFIG).map(([val, c]) =>
-              `<option value="${val}" ${entry.status === val ? 'selected' : ''}
-                style="color:${c.color};background:var(--surface2);">${c.label}</option>`
-            ).join('')}
-          </select>
-        </td>
-        <td>
-          <input type="text" value="${entry.note || ''}"
-            placeholder="Add a note..."
-            maxlength="80"
-            onchange="updateNote('${pair}', this.value)"
-            style="background:transparent;border:none;border-bottom:1px solid var(--border);
-                   color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82rem;
-                   width:100%;padding:4px 2px;outline:none;" />
-        </td>
-        <td style="font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);white-space:nowrap;">
-          ${entry.updated || '—'}
-        </td>
-      `;
+      // Select element
+      const select = document.createElement('select');
+      select.style.cssText = `background:var(--surface2);border:1px solid var(--border);border-radius:5px;
+        padding:5px 8px;color:${cfg.color};font-family:'Space Mono',monospace;
+        font-size:.72rem;cursor:pointer;outline:none;width:130px;`;
+      Object.entries(STATUS_CONFIG).forEach(([val, c]) => {
+        const opt = document.createElement('option');
+        opt.value = val;
+        opt.textContent = c.label;
+        opt.selected = entry.status === val;
+        opt.style.color = c.color;
+        opt.style.background = 'var(--surface2)';
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', (e) => updateStatus(pair, e.target.value));
+
+      // Note input
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = entry.note || '';
+      input.placeholder = 'Add a note...';
+      input.maxLength = 80;
+      input.style.cssText = `background:transparent;border:none;border-bottom:1px solid var(--border);
+        color:var(--text);font-family:'DM Sans',sans-serif;font-size:.82rem;
+        width:100%;padding:4px 2px;outline:none;`;
+      input.addEventListener('change', (e) => updateNote(pair, e.target.value));
+
+      const tdPair = document.createElement('td');
+      tdPair.innerHTML = `<span style="font-family:'Space Mono',monospace;font-weight:700;font-size:.85rem;color:var(--text);">${pair}</span>`;
+
+      const tdType = document.createElement('td');
+      tdType.innerHTML = `<span class="check-tag ${type === 'Major' ? 'tag-green' : 'tag-blue'}">${type}</span>`;
+
+      const tdStatus = document.createElement('td');
+      tdStatus.appendChild(select);
+
+      const tdNote = document.createElement('td');
+      tdNote.appendChild(input);
+
+      const tdUpdated = document.createElement('td');
+      tdUpdated.style.cssText = "font-family:'Space Mono',monospace;font-size:.68rem;color:var(--muted);white-space:nowrap;";
+      tdUpdated.textContent = entry.updated || '—';
+
+      tr.append(tdPair, tdType, tdStatus, tdNote, tdUpdated);
       tbody.appendChild(tr);
     });
 
-    // Update counts
     document.getElementById('count-construction').textContent = counts.construction;
     document.getElementById('count-monitoring').textContent   = counts.monitoring;
     document.getElementById('count-inprogress').textContent   = counts.inprogress;
@@ -1737,7 +1737,7 @@
   function updateStatus(pair, status) {
     if (!trackerData[pair]) trackerData[pair] = { status: '', note: '', updated: '' };
     trackerData[pair].status = status;
-    trackerData[pair].updated = now();
+    trackerData[pair].updated = nowStr();
     saveData();
     renderTracker();
   }
@@ -1745,28 +1745,25 @@
   function updateNote(pair, note) {
     if (!trackerData[pair]) trackerData[pair] = { status: '', note: '', updated: '' };
     trackerData[pair].note = note;
-    trackerData[pair].updated = now();
+    trackerData[pair].updated = nowStr();
     saveData();
   }
 
-  function now() {
+  function nowStr() {
     const d = new Date();
     return d.toLocaleDateString('en-US', { month:'short', day:'numeric' })
       + ' ' + d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
   }
 
-  // ── FILTER ──
+  // ── TRACKER FILTER ──
   function filterTracker(filter) {
     activeFilter = filter;
     document.querySelectorAll('[id^="tfilter-"]').forEach(b => {
       b.className = 'btn btn-ghost';
-      b.style.padding = '6px 14px';
-      b.style.fontSize = '.72rem';
+      b.style.padding = '6px 14px'; b.style.fontSize = '.72rem';
     });
     const btn = document.getElementById('tfilter-' + filter);
-    btn.className = 'btn btn-primary';
-    btn.style.padding = '6px 14px';
-    btn.style.fontSize = '.72rem';
+    if (btn) { btn.className = 'btn btn-primary'; btn.style.padding = '6px 14px'; btn.style.fontSize = '.72rem'; }
     renderTracker();
   }
 
@@ -1778,42 +1775,33 @@
     renderTracker();
   }
 
-  // ── INIT ──
-  (async () => {
-    await loadData();
-    renderTracker();
-  })();
-  // Tab switching
-  function switchTab(id) {
+  // ── TAB SWITCHING ──
+  function switchTab(id, targetEl) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
     document.getElementById('tab-' + id).classList.add('active');
-    event.target.classList.add('active');
+    targetEl.classList.add('active');
   }
 
-  // Checklist toggle
+  // ── CHECKLIST ──
   function toggleCheck(el) {
     el.classList.toggle('checked');
     updateProgress();
   }
 
   function updateProgress() {
-    const all = document.querySelectorAll('#tab-checklist .check-item');
+    const all     = document.querySelectorAll('#tab-checklist .check-item');
     const checked = document.querySelectorAll('#tab-checklist .check-item.checked');
-    const total = all.length;
-    const done = checked.length;
+    const total = all.length, done = checked.length;
     const pct = Math.round((done / total) * 100);
     document.getElementById('progress-fill').style.width = pct + '%';
     document.getElementById('progress-text').textContent = done + ' / ' + total;
-
     const vm = document.getElementById('verdict-msg');
     if (done === total) {
       vm.innerHTML = '<div class="verdict pass">✓ ALL CHECKS PASSED — TRADE IS VALID</div>';
     } else if (done >= 9) {
-      vm.innerHTML = '<div class="verdict" style="background:rgba(255,204,0,.08);color:var(--warn);border:1px solid rgba(255,204,0,.3);">⚠ Almost there — ' + (total - done) + ' check(s) remaining</div>';
-    } else {
-      vm.innerHTML = '';
-    }
+      vm.innerHTML = `<div class="verdict" style="background:rgba(255,204,0,.08);color:var(--warn);border:1px solid rgba(255,204,0,.3);">⚠ Almost there — ${total - done} check(s) remaining</div>`;
+    } else { vm.innerHTML = ''; }
   }
 
   function resetChecklist() {
@@ -1822,115 +1810,86 @@
     document.getElementById('verdict-msg').innerHTML = '';
   }
 
+  // ── FOREX PAIRS FILTER ──
   function filterPairs(type) {
-    // Update buttons
     document.querySelectorAll('[id^="filter-"]').forEach(b => {
-      b.className = 'btn btn-ghost';
-      b.style.padding = '6px 14px';
-      b.style.fontSize = '.72rem';
+      b.className = 'btn btn-ghost'; b.style.padding = '6px 14px'; b.style.fontSize = '.72rem';
     });
     const activeBtn = document.getElementById('filter-' + type);
-    activeBtn.className = 'btn btn-primary';
-    activeBtn.style.padding = '6px 14px';
-    activeBtn.style.fontSize = '.72rem';
-
+    activeBtn.className = 'btn btn-primary'; activeBtn.style.padding = '6px 14px'; activeBtn.style.fontSize = '.72rem';
     const rows = document.querySelectorAll('.pair-row');
     const majorSection = document.getElementById('section-major');
     const minorSection = document.getElementById('section-minor');
-
     rows.forEach(row => {
-      if (type === 'all') {
-        row.style.display = '';
-      } else if (type === 'major') {
-        row.style.display = row.classList.contains('major') ? '' : 'none';
-      } else if (type === 'minor') {
-        row.style.display = row.classList.contains('minor') ? '' : 'none';
-      } else {
-        row.style.display = row.classList.contains(type) ? '' : 'none';
-      }
+      if (type === 'all') row.style.display = '';
+      else if (type === 'major') row.style.display = row.classList.contains('major') ? '' : 'none';
+      else if (type === 'minor') row.style.display = row.classList.contains('minor') ? '' : 'none';
+      else row.style.display = row.classList.contains(type) ? '' : 'none';
     });
-
-    // Show/hide section headers
-    if (type === 'minor') {
-      majorSection.style.display = 'none';
-      minorSection.style.display = '';
-    } else if (type === 'major') {
-      majorSection.style.display = '';
-      minorSection.style.display = 'none';
-    } else {
-      majorSection.style.display = '';
-      minorSection.style.display = '';
-    }
+    if (type === 'minor') { majorSection.style.display = 'none'; minorSection.style.display = ''; }
+    else if (type === 'major') { majorSection.style.display = ''; minorSection.style.display = 'none'; }
+    else { majorSection.style.display = ''; minorSection.style.display = ''; }
   }
+
+  // ── RISK CALCULATOR ──
   function calculate() {
     const balance = parseFloat(document.getElementById('balance').value);
     const riskPct = parseFloat(document.getElementById('risk-pct').value) / 100;
-    const entry = parseFloat(document.getElementById('entry').value);
-    const sl = parseFloat(document.getElementById('sl').value);
-    const tp = parseFloat(document.getElementById('tp').value);
-    const dir = document.getElementById('direction').value;
-
+    const entry   = parseFloat(document.getElementById('entry').value);
+    const sl      = parseFloat(document.getElementById('sl').value);
+    const tp      = parseFloat(document.getElementById('tp').value);
+    const dir     = document.getElementById('direction').value;
     if (!balance) {
-      document.getElementById('l-daily').textContent = '—';
-      document.getElementById('l-weekly').textContent = '—';
-      document.getElementById('l-monthly').textContent = '—';
-      document.getElementById('l-prop').textContent = '—';
+      ['l-daily','l-weekly','l-monthly','l-prop'].forEach(id => document.getElementById(id).textContent = '—');
       return;
     }
-
-    // Limits
-    document.getElementById('l-daily').textContent = '$' + (balance * 0.02).toFixed(2);
-    document.getElementById('l-weekly').textContent = '$' + (balance * 0.04).toFixed(2);
+    document.getElementById('l-daily').textContent   = '$' + (balance * 0.02).toFixed(2);
+    document.getElementById('l-weekly').textContent  = '$' + (balance * 0.04).toFixed(2);
     document.getElementById('l-monthly').textContent = '$' + (balance * 0.12).toFixed(2);
-    document.getElementById('l-prop').textContent = '$' + (balance * 0.10).toFixed(2);
-
+    document.getElementById('l-prop').textContent    = '$' + (balance * 0.10).toFixed(2);
     if (!entry || !sl || !tp) return;
-
     const riskAmt = balance * riskPct;
-    const slDist = Math.abs(entry - sl);
-    const tpDist = Math.abs(tp - entry);
-
+    const slDist  = Math.abs(entry - sl);
+    const tpDist  = Math.abs(tp - entry);
     if (slDist === 0) return;
-
     const rr = tpDist / slDist;
     const slPips = Math.round(slDist * 10000);
     const tpPips = Math.round(tpDist * 10000);
     const profit = riskAmt * rr;
-
-    // Direction check
-    let dirValid = true;
-    if (dir === 'buy' && sl >= entry) dirValid = false;
-    if (dir === 'sell' && sl <= entry) dirValid = false;
-
+    let dirValid = !((dir === 'buy' && sl >= entry) || (dir === 'sell' && sl <= entry));
     document.getElementById('r-risk-amt').textContent = '$' + riskAmt.toFixed(2);
-    document.getElementById('r-sl-pips').textContent = slPips + ' pips';
-    document.getElementById('r-tp-pips').textContent = tpPips + ' pips';
-    document.getElementById('r-rr').textContent = '1:' + rr.toFixed(2);
-    document.getElementById('r-profit').textContent = '$' + profit.toFixed(2);
-
+    document.getElementById('r-sl-pips').textContent  = slPips + ' pips';
+    document.getElementById('r-tp-pips').textContent  = tpPips + ' pips';
+    document.getElementById('r-rr').textContent       = '1:' + rr.toFixed(2);
+    document.getElementById('r-profit').textContent   = '$' + profit.toFixed(2);
     const rrEl = document.getElementById('r-rr');
     const statusEl = document.getElementById('r-status');
     const verdictEl = document.getElementById('r-verdict');
-
     if (!dirValid) {
-      statusEl.textContent = 'DIR ERR';
-      statusEl.style.color = 'var(--danger)';
-      verdictEl.innerHTML = '<div class="verdict fail">⛔ SL placement invalid for direction</div>';
-      return;
+      statusEl.textContent = 'DIR ERR'; statusEl.style.color = 'var(--danger)';
+      verdictEl.innerHTML = '<div class="verdict fail">⛔ SL placement invalid for direction</div>'; return;
     }
-
     if (rr >= 2.5) {
-      rrEl.style.color = 'var(--accent)';
-      statusEl.textContent = 'VALID';
-      statusEl.style.color = 'var(--accent)';
-      verdictEl.innerHTML = '<div class="verdict pass">✓ RR VALID — TRADE APPROVED (1:' + rr.toFixed(2) + ')</div>';
+      rrEl.style.color = 'var(--accent)'; statusEl.textContent = 'VALID'; statusEl.style.color = 'var(--accent)';
+      verdictEl.innerHTML = `<div class="verdict pass">✓ RR VALID — TRADE APPROVED (1:${rr.toFixed(2)})</div>`;
     } else {
-      rrEl.style.color = 'var(--danger)';
-      statusEl.textContent = 'ABORT';
-      statusEl.style.color = 'var(--danger)';
-      verdictEl.innerHTML = '<div class="verdict fail">⛔ RR BELOW 1:2.5 — ABORT TRADE (current: 1:' + rr.toFixed(2) + ')</div>';
+      rrEl.style.color = 'var(--danger)'; statusEl.textContent = 'ABORT'; statusEl.style.color = 'var(--danger)';
+      verdictEl.innerHTML = `<div class="verdict fail">⛔ RR BELOW 1:2.5 — ABORT TRADE (current: 1:${rr.toFixed(2)})</div>`;
     }
   }
+
+  // ── EXPOSE FUNCTIONS TO HTML onclick HANDLERS ──
+  window.switchTab        = (id, el) => switchTab(id, el);
+  window.toggleCheck      = (el) => toggleCheck(el);
+  window.resetChecklist   = () => resetChecklist();
+  window.filterPairs      = (t) => filterPairs(t);
+  window.filterTracker    = (f) => filterTracker(f);
+  window.clearAllTracker  = () => clearAllTracker();
+  window.calculate        = () => calculate();
+
+  // ── INIT ──
+  await loadData();
+  renderTracker();
 </script>
 
 </body>
