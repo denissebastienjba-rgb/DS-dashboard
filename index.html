@@ -1632,17 +1632,23 @@
     el.style.color = s.color;
   }
 
+  // ── KEY HELPERS ──
+  const toKey  = (pair) => pair.replace('/', '_');  // EUR/USD → EUR_USD
+  const toPair = (key)  => key.replace('_', '/');   // EUR_USD → EUR/USD
+
   // ── LOAD FROM FIREBASE ──
   async function loadData() {
     setSyncStatus('loading');
     try {
       const snap = await get(trackerRef);
-      trackerData = snap.val() || {};
+      const raw = snap.val() || {};
+      // Convert keys back to pair format (EUR_USD → EUR/USD)
+      trackerData = {};
+      Object.entries(raw).forEach(([k, v]) => { trackerData[toPair(k)] = v; });
       setSyncStatus('synced');
     } catch(e) {
       console.error('Firebase load error — code:', e.code, '— message:', e.message);
       setSyncStatus('error');
-      // Show error detail in the sync status for debugging
       const el = document.getElementById('sync-status');
       if (el) el.title = e.code + ': ' + e.message;
     }
@@ -1654,7 +1660,10 @@
     setSyncStatus('saving');
     saveTimeout = setTimeout(async () => {
       try {
-        await set(trackerRef, trackerData);
+        // Convert pair keys to Firebase-safe keys (EUR/USD → EUR_USD)
+        const sanitized = {};
+        Object.entries(trackerData).forEach(([k, v]) => { sanitized[toKey(k)] = v; });
+        await set(trackerRef, sanitized);
         setSyncStatus('synced');
       } catch(e) {
         console.error('Firebase save error — code:', e.code, '— message:', e.message);
