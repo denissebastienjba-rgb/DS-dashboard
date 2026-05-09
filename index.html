@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Double Structure Strategy — Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCgV77MbarV1td4BU7s3m4wHfloVtt17hk",
+    authDomain: "dsdashboard-1f801.firebaseapp.com",
+    databaseURL: "https://dsdashboard-1f801-default-rtdb.firebaseio.com",
+    projectId: "dsdashboard-1f801",
+    storageBucket: "dsdashboard-1f801.firebasestorage.app",
+    messagingSenderId: "603064397361",
+    appId: "1:603064397361:web:20881938008de687fcef10"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Expose to global scope for use in non-module script
+  window._fbSet = (data) => set(ref(db, 'tracker'), data);
+  window._fbGet = () => get(ref(db, 'tracker')).then(snap => snap.val());
+</script>
 <style>
   :root {
     --bg: #0a0c0f;
@@ -1596,8 +1617,6 @@
   };
 
   // ── FIREBASE CONFIG ──
-  const FIREBASE_URL = 'https://dsdashboard-1f801-default-rtdb.firebaseio.com/tracker.json';
-
   let trackerData = {};
   let activeFilter = 'all';
   let saveTimeout = null;
@@ -1606,11 +1625,18 @@
   async function loadData() {
     setSyncStatus('loading');
     try {
-      const res = await fetch(FIREBASE_URL);
-      const data = await res.json();
+      // Wait for Firebase SDK to be ready
+      let attempts = 0;
+      while (!window._fbGet && attempts < 20) {
+        await new Promise(r => setTimeout(r, 100));
+        attempts++;
+      }
+      if (!window._fbGet) throw new Error('Firebase not ready');
+      const data = await window._fbGet();
       trackerData = data || {};
       setSyncStatus('synced');
     } catch(e) {
+      console.error('Load error:', e);
       trackerData = {};
       setSyncStatus('error');
     }
@@ -1622,13 +1648,10 @@
     setSyncStatus('saving');
     saveTimeout = setTimeout(async () => {
       try {
-        await fetch(FIREBASE_URL, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(trackerData)
-        });
+        await window._fbSet(trackerData);
         setSyncStatus('synced');
       } catch(e) {
+        console.error('Save error:', e);
         setSyncStatus('error');
       }
     }, 800);
@@ -1639,10 +1662,10 @@
     const el = document.getElementById('sync-status');
     if (!el) return;
     const states = {
-      loading: { text: '⟳ Loading...', color: 'var(--muted)' },
-      saving:  { text: '⟳ Saving...',  color: 'var(--warn)'  },
-      synced:  { text: '✓ Synced',      color: 'var(--accent)'},
-      error:   { text: '✗ Sync failed', color: 'var(--danger)'},
+      loading: { text: '⟳ Loading...', color: 'var(--muted)'  },
+      saving:  { text: '⟳ Saving...',  color: 'var(--warn)'   },
+      synced:  { text: '✓ Synced',     color: 'var(--accent)' },
+      error:   { text: '✗ Sync failed',color: 'var(--danger)' },
     };
     const s = states[state] || states.synced;
     el.textContent = s.text;
